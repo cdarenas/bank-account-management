@@ -25,7 +25,15 @@ Backend:
 
 Account Service posee los endpoints que permiten dar de alta una cuenta bancaria, consultar el detalle de una cuenta existente, consultar el balance de una cuenta y tambien posee un endpoint que permite enviar mediante Server Sent Events el saldo de la cuenta bancaria al cliente web, cada 3 segundos.
 
-Transaction Service posee los endpoints para crear transacciones para una cuenta bancaria, por ejemplo, realizar extracciones de dinero o depositar dinero. Este microservicio recibe peticiones de transacciones y envia eventos al microservicio Account Service para que previa ejecución de validaciones de negocio, efectué el cambio de estado de la cuenta según el tipo de transacción indicada. Al finalizar, Account Service le notifica a Transaction Service acerca del estado de la operación.
+Transaction Service posee los endpoints para crear transacciones para una cuenta bancaria, por ejemplo, realizar extracciones de dinero o depositar dinero. Este microservicio recibe peticiones de transacciones y envia eventos al microservicio Account Service para que previa ejecución de validaciones de negocio, efectué el cambio de estado de la cuenta según el tipo de transacción indicada. Al finalizar, Account Service le notifica a Transaction Service acerca del estado de la operación de manera de realizar los cambios de estados necesarios y completar la transacción.
+
+Aclaración importante del proceso transaccional: Debido a que el éxito de una transacción depende de varios factores y el flujo del proceso implica validaciones y cambios de estados entre los dos microservicios y que ante cualquier falla o evento que pueda implicar inconsistencias de datos como resultado del proceso, se implementó el patrón SAGA que permite controlar transacciones respetando ACID en arquitecturas distribuidas.
+
+Flujo de una transacción de dinero: 
+
+Caso de negocio
+
+Se envía una petición para real¡zar un retiro de dinero, el request llega al Transaction Service, se crea una transacción para el usuario en cuestión en estado CREATED, se almacena en el EventStore y en la base de datos de lectura, se envía un evento a Account Service el cual ejecutará las validaciones de negocio, por ejemplo, validar que la cuenta posea saldo suficiente. Si la cuenta no posee saldo suficiente, se notifica al Transaction Service de esta situación y éste cambia el estado a FAILED, de lo contrario, en Account Service se realiza el descuento del dinero a retirar y se notifica para que la transacción pase a APPROVED. El proceso es gestionado con SAGA, lo que asegura la atomicidad de la misma y evitar inconsistencias posibles durante el proceso.
 
 ![Proyectos](https://github.com/cdarenas/bank-account-management/blob/main/images/proyectos.png)
 
